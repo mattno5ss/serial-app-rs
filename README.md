@@ -1,5 +1,5 @@
 # serial-app-rs
-This project was used as a learning experience for rust GUI programming with iced.rs
+This project is being used as a learning experience for rust GUI programming with iced.rs
 
 Selecting a port...
 
