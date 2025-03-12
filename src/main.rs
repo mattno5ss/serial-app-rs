@@ -3,8 +3,8 @@
 
 use iced::border::Radius;
 use iced::time::{Duration, every};
-use iced::widget::{button, column, combo_box, container, row, scrollable, text, text_input};
-use iced::{Border, Center, Element, Fill, Font, Size, Subscription, Theme};
+use iced::widget::{button, column, combo_box, container, row, scrollable, text_input};
+use iced::{Border, Center, Element, Fill, Size, Subscription, Theme};
 use std::io::Write;
 
 const VERSION: &str = "v0.4";
@@ -71,7 +71,8 @@ impl SerialApp {
             .iter()
             .map(|port| port.port_name.clone())
             .collect::<Vec<_>>();
-        let themes = Theme::ALL.to_vec();
+        let mut themes = Theme::ALL.to_vec();
+        themes.remove(0); // removed Light theme from selection
         Self {
             port_list: combo_box::State::new(ports),
             selected_port: None,
@@ -244,17 +245,15 @@ impl SerialApp {
         .padding(10)
         .style(|theme: &Theme| container::Style {
             border: Border {
-                color: theme.palette().primary,
+                color: theme.palette().success,
                 width: 1.0,
                 radius: Radius::new(3.0),
             },
             ..container::Style::default()
         });
-        let test_font = text("Testing Font").size(20).font(Font::MONOSPACE);
         // Layout
         container(
             column![
-                row![test_font],
                 row![port_list, theme_list].spacing(20),
                 row![log],
                 row![command, send].spacing(20),
@@ -268,9 +267,6 @@ impl SerialApp {
     }
     // Initial Theme
     fn theme(&self) -> Theme {
-        self.selected_theme
-            .as_ref()
-            .unwrap_or(&Theme::Light)
-            .clone()
+        self.selected_theme.as_ref().unwrap_or(&Theme::Dark).clone()
     }
 }
