@@ -1,12 +1,13 @@
 # serial-app-rs
 This project is being used as a learning experience for rust GUI programming with iced.rs
 
-Selecting a port...
+![1](https://github.com/user-attachments/assets/3a54bb62-c82b-453a-81a3-a7aedece3670)
 
-![01](https://github.com/user-attachments/assets/7e8d5c63-89d8-488a-aef3-906ce10c6461)
-![02](https://github.com/user-attachments/assets/46216859-1202-4e02-a519-f364218d57f7)
+Selecting themes and ports...
+
+![4](https://github.com/user-attachments/assets/561d7558-6f6d-43e3-92cd-cbf31ab04ffe)
+![3](https://github.com/user-attachments/assets/5c15f0e2-755f-4885-b8a4-dd5b8cea01d5)
 
 Sending data and receiving data...
 
-![04](https://github.com/user-attachments/assets/a894dd4b-2927-40d4-b667-293076442d2e)
-![05](https://github.com/user-attachments/assets/8e0c2b22-b063-4166-b8b6-daad55a70b60)
+![5](https://github.com/user-attachments/assets/b576b7ef-f245-4c59-8cb5-e0df4667c808)
