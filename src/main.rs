@@ -1,12 +1,13 @@
 // On Arch Linux (EndeavourOS), you must add your user to the "uucp" group with
 // "sudo usermod -aG uucp <username>" to access serial ports
 
+use iced::border::Radius;
 use iced::time::{Duration, every};
-use iced::widget::{button, column, combo_box, container, row, scrollable, text_input};
-use iced::{Center, Element, Fill, Size, Subscription, Theme};
+use iced::widget::{button, column, combo_box, container, row, scrollable, text, text_input};
+use iced::{Border, Center, Element, Fill, Font, Size, Subscription, Theme};
 use std::io::Write;
 
-const VERSION: &str = "v0.2";
+const VERSION: &str = "v0.4";
 
 fn main() -> iced::Result {
     // Initial Window Settings
@@ -26,6 +27,8 @@ fn main() -> iced::Result {
 struct SerialApp {
     port_list: combo_box::State<String>,
     selected_port: Option<String>,
+    theme_list: combo_box::State<Theme>,
+    selected_theme: Option<Theme>,
     port: Option<Box<dyn serialport::SerialPort>>,
     command: String,
     log_messages: Vec<String>,
@@ -47,6 +50,8 @@ enum RecvState {
 enum Message {
     ChangeCmd(String),
     SelectPort(String),
+    SelectTheme(Theme),
+    HoverTheme(Theme),
     OpenPort,
     ClosePort,
     Send,
@@ -61,13 +66,17 @@ impl SerialApp {
     }
     // Initial App State
     fn new() -> Self {
-        let mut ports = vec![];
-        for port in serialport::available_ports().expect("No ports found") {
-            ports.push(port.port_name);
-        }
+        let ports = serialport::available_ports()
+            .expect("No ports found")
+            .iter()
+            .map(|port| port.port_name.clone())
+            .collect::<Vec<_>>();
+        let themes = Theme::ALL.to_vec();
         Self {
             port_list: combo_box::State::new(ports),
             selected_port: None,
+            theme_list: combo_box::State::new(themes),
+            selected_theme: None,
             port: None,
             command: String::new(),
             log_messages: Vec::new(),
@@ -79,6 +88,10 @@ impl SerialApp {
         match message {
             Message::ChangeCmd(cmd) => self.command = cmd,
             Message::SelectPort(port) => self.selected_port = Some(port),
+            Message::SelectTheme(theme) => self.selected_theme = Some(theme),
+            Message::HoverTheme(theme) => {
+                self.selected_theme = Some(theme);
+            }
             Message::OpenPort => {
                 if self.selected_port.is_none() {
                     self.log_messages.push("No port selected".to_string());
@@ -107,6 +120,7 @@ impl SerialApp {
             Message::ClosePort => {
                 if self.port.is_some() {
                     self.port = None;
+                    self.log_messages.push("Port closed".to_string());
                     self.recv_state = RecvState::Idle;
                 }
             }
@@ -132,7 +146,7 @@ impl SerialApp {
                                     .map(|byte| format!("{:02X}", byte))
                                     .collect::<Vec<String>>()
                                     .join(" ");
-                                self.log_messages.push(byte_string);
+                                self.log_messages.push(format!("Received: {}", byte_string));
                             }
                             Err(e) => {
                                 self.log_messages.push(e.to_string());
@@ -149,9 +163,11 @@ impl SerialApp {
                     match self.recv_state {
                         RecvState::Idle => {
                             self.recv_state = RecvState::Listening;
+                            self.log_messages.push("Listener started".to_string());
                         }
                         RecvState::Listening { .. } => {
                             self.recv_state = RecvState::Idle;
+                            self.log_messages.push("Listener stopped".to_string());
                         }
                     }
                 } else {
@@ -176,6 +192,14 @@ impl SerialApp {
             self.selected_port.as_ref(),
             Message::SelectPort,
         )
+        .padding(10);
+        let theme_list = combo_box(
+            &self.theme_list,
+            "Change theme...",
+            self.selected_theme.as_ref(),
+            Message::SelectTheme,
+        )
+        .on_option_hovered(Message::HoverTheme)
         .padding(10);
         let command = text_input("Enter command...", &self.command)
             .on_input(Message::ChangeCmd)
@@ -211,14 +235,27 @@ impl SerialApp {
         for i in &self.log_messages {
             log_column = log_column.push(i.as_str());
         }
-        let log = scrollable(log_column)
-            .anchor_bottom()
-            .width(Fill)
-            .height(Fill);
+        let log = container(
+            scrollable(log_column)
+                .anchor_bottom()
+                .width(Fill)
+                .height(Fill),
+        )
+        .padding(10)
+        .style(|theme: &Theme| container::Style {
+            border: Border {
+                color: theme.palette().primary,
+                width: 1.0,
+                radius: Radius::new(3.0),
+            },
+            ..container::Style::default()
+        });
+        let test_font = text("Testing Font").size(20).font(Font::MONOSPACE);
         // Layout
         container(
             column![
-                row![port_list],
+                row![test_font],
+                row![port_list, theme_list].spacing(20),
                 row![log],
                 row![command, send].spacing(20),
                 row![port_toggle, recv_toggle].spacing(20),
@@ -231,6 +268,9 @@ impl SerialApp {
     }
     // Initial Theme
     fn theme(&self) -> Theme {
-        Theme::GruvboxDark
+        self.selected_theme
+            .as_ref()
+            .unwrap_or(&Theme::Light)
+            .clone()
     }
 }
