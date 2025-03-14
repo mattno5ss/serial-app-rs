@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 iced = { version = "0.13.1", features = ["tokio"] }
 serialport = "4.7.0"
+hex = "0.4.3"
