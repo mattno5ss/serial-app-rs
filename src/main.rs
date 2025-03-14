@@ -3,11 +3,13 @@
 
 use iced::border::Radius;
 use iced::time::{Duration, every};
-use iced::widget::{button, column, combo_box, container, row, scrollable, text_input};
-use iced::{Border, Center, Element, Fill, Size, Subscription, Theme};
+use iced::widget::{
+    button, checkbox, column, combo_box, container, radio, row, scrollable, text, text_input,
+};
+use iced::{Border, Element, Fill, Size, Subscription, Theme};
 use std::io::Write;
 
-const VERSION: &str = "v0.4";
+const VERSION: &str = "v0.5";
 
 fn main() -> iced::Result {
     // Initial Window Settings
@@ -33,12 +35,22 @@ struct SerialApp {
     command: String,
     log_messages: Vec<String>,
     recv_state: RecvState,
+    radio_choice: Option<RadioChoice>,
+    rx_utf8_checked: bool,
+    rx_hex_checked: bool,
+    rx_binary_checked: bool,
 }
 // Default App State
 impl Default for SerialApp {
     fn default() -> Self {
         SerialApp::new()
     }
+}
+// Send Radio
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum RadioChoice {
+    UTF8,
+    HEX,
 }
 // Listener State
 enum RecvState {
@@ -57,6 +69,10 @@ enum Message {
     Send,
     Recv,
     ToggleListener,
+    SelectRadio(RadioChoice),
+    CheckBoxUTF8(bool),
+    CheckBoxHEX(bool),
+    CheckBoxBIN(bool),
 }
 // App Functions
 impl SerialApp {
@@ -82,6 +98,10 @@ impl SerialApp {
             command: String::new(),
             log_messages: Vec::new(),
             recv_state: RecvState::Idle,
+            radio_choice: Some(RadioChoice::UTF8),
+            rx_utf8_checked: false,
+            rx_hex_checked: true,
+            rx_binary_checked: false,
         }
     }
     // App Logic
@@ -128,8 +148,20 @@ impl SerialApp {
             Message::Send => match self.port {
                 Some(ref mut port) => {
                     let cmd = &self.command;
-                    port.write_all(cmd.as_bytes())
-                        .expect("Error sending command");
+                    if self.radio_choice == Some(RadioChoice::HEX) {
+                        let hex_string = cmd.replace(" ", "");
+                        if hex_string.len() % 2 != 0 {
+                            self.log_messages.push("Invalid hex string".to_string());
+                            return;
+                        }
+                        let hex_bytes =
+                            hex::decode(&hex_string).expect("Error decoding hex string");
+                        port.write_all(&hex_bytes)
+                            .expect("Error sending hex command");
+                    } else if self.radio_choice == Some(RadioChoice::UTF8) {
+                        port.write_all(cmd.as_bytes())
+                            .expect("Error sending utf8 command");
+                    }
                     self.log_messages.push("Sent: ".to_string() + cmd);
                 }
                 None => {
@@ -142,12 +174,27 @@ impl SerialApp {
                         let mut buffer = vec![0; 16];
                         match port.read(&mut buffer) {
                             Ok(_) => {
-                                let byte_string = buffer
-                                    .iter()
-                                    .map(|byte| format!("{:02X}", byte))
-                                    .collect::<Vec<String>>()
-                                    .join(" ");
-                                self.log_messages.push(format!("Received: {}", byte_string));
+                                if self.rx_hex_checked {
+                                    let hex_string = buffer
+                                        .iter()
+                                        .map(|byte| format!("{:02X}", byte))
+                                        .collect::<Vec<String>>()
+                                        .join(" ");
+                                    self.log_messages.push(format!("Received: {}", hex_string));
+                                }
+                                if self.rx_binary_checked {
+                                    let binary_string = buffer
+                                        .iter()
+                                        .map(|byte| format!("{:08b}", byte))
+                                        .collect::<Vec<String>>()
+                                        .join(" ");
+                                    self.log_messages
+                                        .push(format!("Received: {}", binary_string));
+                                }
+                                if self.rx_utf8_checked {
+                                    let utf8_string = String::from_utf8(buffer).unwrap();
+                                    self.log_messages.push(format!("Received: {}", utf8_string));
+                                }
                             }
                             Err(e) => {
                                 self.log_messages.push(e.to_string());
@@ -175,6 +222,18 @@ impl SerialApp {
                     self.log_messages.push("Port not open".to_string());
                 }
             }
+            Message::SelectRadio(choice) => {
+                self.radio_choice = Some(choice);
+            }
+            Message::CheckBoxUTF8(clicked) => {
+                self.rx_utf8_checked = clicked;
+            }
+            Message::CheckBoxHEX(clicked) => {
+                self.rx_hex_checked = clicked;
+            }
+            Message::CheckBoxBIN(clicked) => {
+                self.rx_binary_checked = clicked;
+            }
         }
     }
     // Listener
@@ -194,6 +253,7 @@ impl SerialApp {
             Message::SelectPort,
         )
         .padding(10);
+
         let theme_list = combo_box(
             &self.theme_list,
             "Change theme...",
@@ -201,11 +261,33 @@ impl SerialApp {
             Message::SelectTheme,
         )
         .on_option_hovered(Message::HoverTheme)
-        .padding(10);
+        .padding(10)
+        .width(200);
+
         let command = text_input("Enter command...", &self.command)
             .on_input(Message::ChangeCmd)
             .on_submit(Message::Send)
             .padding(10);
+
+        let tx_type = text("Send as:");
+        let tx_utf8 = radio(
+            "UTF-8",
+            RadioChoice::UTF8,
+            self.radio_choice,
+            Message::SelectRadio,
+        );
+        let tx_hex = radio(
+            "HEX",
+            RadioChoice::HEX,
+            self.radio_choice,
+            Message::SelectRadio,
+        );
+
+        let rx_type = text("Receive as:");
+        let rx_utf8 = checkbox("UTF-8", self.rx_utf8_checked).on_toggle(Message::CheckBoxUTF8);
+        let rx_hex = checkbox("HEX", self.rx_hex_checked).on_toggle(Message::CheckBoxHEX);
+        let rx_binary = checkbox("Binary", self.rx_binary_checked).on_toggle(Message::CheckBoxBIN);
+
         // Buttons
         let port_toggle = if self.port.is_some() {
             button("Close Port")
@@ -254,13 +336,14 @@ impl SerialApp {
         // Layout
         container(
             column![
-                row![port_list, theme_list].spacing(20),
+                row![port_list, port_toggle, recv_toggle].spacing(20),
+                row![rx_type, rx_hex, rx_utf8, rx_binary].spacing(20),
                 row![log],
+                row![tx_type, tx_utf8, tx_hex].spacing(20),
                 row![command, send].spacing(20),
-                row![port_toggle, recv_toggle].spacing(20),
+                row![theme_list].spacing(20),
             ]
-            .spacing(20)
-            .align_x(Center),
+            .spacing(20), //.align_x(Center),
         )
         .padding(20)
         .into()
