@@ -269,7 +269,7 @@ impl SerialApp {
             .on_submit(Message::Send)
             .padding(10);
 
-        let tx_type = text("Send as:");
+        let tx_type = text("Command type:");
         let tx_utf8 = radio(
             "UTF-8",
             RadioChoice::UTF8,
@@ -286,7 +286,7 @@ impl SerialApp {
         let rx_type = text("Receive as:");
         let rx_utf8 = checkbox("UTF-8", self.rx_utf8_checked).on_toggle(Message::CheckBoxUTF8);
         let rx_hex = checkbox("HEX", self.rx_hex_checked).on_toggle(Message::CheckBoxHEX);
-        let rx_binary = checkbox("Binary", self.rx_binary_checked).on_toggle(Message::CheckBoxBIN);
+        let rx_bin = checkbox("BIN", self.rx_binary_checked).on_toggle(Message::CheckBoxBIN);
 
         // Buttons
         let port_toggle = if self.port.is_some() {
@@ -337,7 +337,7 @@ impl SerialApp {
         container(
             column![
                 row![port_list, port_toggle, recv_toggle].spacing(20),
-                row![rx_type, rx_hex, rx_utf8, rx_binary].spacing(20),
+                row![rx_type, rx_hex, rx_bin, rx_utf8].spacing(20),
                 row![log],
                 row![tx_type, tx_utf8, tx_hex].spacing(20),
                 row![command, send].spacing(20),
