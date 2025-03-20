@@ -155,12 +155,29 @@ impl SerialApp {
                             return;
                         }
                         let hex_bytes =
-                            hex::decode(&hex_string).expect("Error decoding hex string");
-                        port.write_all(&hex_bytes)
-                            .expect("Error sending hex command");
+                            match hex::decode(&hex_string) {
+                                Ok(decoded_hex) => {decoded_hex}
+                                Err(e) => {
+                                    self.log_messages.push(format!("Error decoding hex: {}", e));
+                                    return;
+                                }
+                            };
+                        match port.write_all(&hex_bytes) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                self.log_messages.push(format!("Error sending hex command: {}", e));
+                                return;
+                            }
+                        }
+                            
                     } else if self.radio_choice == Some(RadioChoice::UTF8) {
-                        port.write_all(cmd.as_bytes())
-                            .expect("Error sending utf8 command");
+                        match port.write_all(cmd.as_bytes()) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                self.log_messages.push(format!("Error sending utf8 command: {}", e));
+                                return;
+                            }
+                        }
                     }
                     self.log_messages.push("Sent: ".to_string() + cmd);
                 }
@@ -343,7 +360,7 @@ impl SerialApp {
                 row![command, send].spacing(20),
                 row![theme_list].spacing(20),
             ]
-            .spacing(20), //.align_x(Center),
+            .spacing(20),
         )
         .padding(20)
         .into()
