@@ -9,7 +9,7 @@ use iced::widget::{
 use iced::{Border, Element, Fill, Size, Subscription, Theme};
 use std::io::Write;
 
-const VERSION: &str = "v0.5";
+const VERSION: &str = "v0.6";
 
 fn main() -> iced::Result {
     // Initial Window Settings
