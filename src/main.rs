@@ -49,8 +49,8 @@ impl Default for SerialApp {
 // Send Radio
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum RadioChoice {
-    UTF8,
-    HEX,
+    Utf8,
+    Hex,
 }
 // Listener State
 enum RecvState {
@@ -78,7 +78,7 @@ enum Message {
 impl SerialApp {
     // App Title and Version
     fn title(&self) -> String {
-        format!("Serial App {}", VERSION)
+        format!("Serial App {VERSION}")
     }
     // Initial App State
     fn new() -> Self {
@@ -98,7 +98,7 @@ impl SerialApp {
             command: String::new(),
             log_messages: Vec::new(),
             recv_state: RecvState::Idle,
-            radio_choice: Some(RadioChoice::UTF8),
+            radio_choice: Some(RadioChoice::Utf8),
             rx_utf8_checked: false,
             rx_hex_checked: true,
             rx_binary_checked: false,
@@ -148,33 +148,33 @@ impl SerialApp {
             Message::Send => match self.port {
                 Some(ref mut port) => {
                     let cmd = &self.command;
-                    if self.radio_choice == Some(RadioChoice::HEX) {
+                    if self.radio_choice == Some(RadioChoice::Hex) {
                         let hex_string = cmd.replace(" ", "");
                         if hex_string.len() % 2 != 0 {
                             self.log_messages.push("Invalid hex string".to_string());
                             return;
                         }
-                        let hex_bytes =
-                            match hex::decode(&hex_string) {
-                                Ok(decoded_hex) => {decoded_hex}
-                                Err(e) => {
-                                    self.log_messages.push(format!("Error decoding hex: {}", e));
-                                    return;
-                                }
-                            };
+                        let hex_bytes = match hex::decode(&hex_string) {
+                            Ok(decoded_hex) => decoded_hex,
+                            Err(e) => {
+                                self.log_messages.push(format!("Error decoding hex: {e}"));
+                                return;
+                            }
+                        };
                         match port.write_all(&hex_bytes) {
                             Ok(_) => {}
                             Err(e) => {
-                                self.log_messages.push(format!("Error sending hex command: {}", e));
+                                self.log_messages
+                                    .push(format!("Error sending hex command: {e}"));
                                 return;
                             }
                         }
-                            
-                    } else if self.radio_choice == Some(RadioChoice::UTF8) {
+                    } else if self.radio_choice == Some(RadioChoice::Utf8) {
                         match port.write_all(cmd.as_bytes()) {
                             Ok(_) => {}
                             Err(e) => {
-                                self.log_messages.push(format!("Error sending utf8 command: {}", e));
+                                self.log_messages
+                                    .push(format!("Error sending utf8 command: {e}"));
                                 return;
                             }
                         }
@@ -190,27 +190,27 @@ impl SerialApp {
                     if port.bytes_to_read().unwrap() > 0 {
                         let mut buffer = vec![0; 16];
                         match port.read(&mut buffer) {
-                            Ok(_) => {
+                            Ok(b) => {
                                 if self.rx_hex_checked {
                                     let hex_string = buffer
                                         .iter()
-                                        .map(|byte| format!("{:02X}", byte))
+                                        .map(|byte| format!("{byte:02X}"))
                                         .collect::<Vec<String>>()
                                         .join(" ");
-                                    self.log_messages.push(format!("Received: {}", hex_string));
+                                    self.log_messages
+                                        .push(format!("Received {b} bytes: {hex_string}"));
                                 }
                                 if self.rx_binary_checked {
                                     let binary_string = buffer
                                         .iter()
-                                        .map(|byte| format!("{:08b}", byte))
+                                        .map(|byte| format!("{byte:08b}"))
                                         .collect::<Vec<String>>()
                                         .join(" ");
-                                    self.log_messages
-                                        .push(format!("Received: {}", binary_string));
+                                    self.log_messages.push(format!("Received: {binary_string}"));
                                 }
                                 if self.rx_utf8_checked {
                                     let utf8_string = String::from_utf8(buffer).unwrap();
-                                    self.log_messages.push(format!("Received: {}", utf8_string));
+                                    self.log_messages.push(format!("Received: {utf8_string}"));
                                 }
                             }
                             Err(e) => {
@@ -230,7 +230,7 @@ impl SerialApp {
                             self.recv_state = RecvState::Listening;
                             self.log_messages.push("Listener started".to_string());
                         }
-                        RecvState::Listening { .. } => {
+                        RecvState::Listening => {
                             self.recv_state = RecvState::Idle;
                             self.log_messages.push("Listener stopped".to_string());
                         }
@@ -257,7 +257,7 @@ impl SerialApp {
     fn subscription(&self) -> Subscription<Message> {
         match self.recv_state {
             RecvState::Idle => Subscription::none(),
-            RecvState::Listening { .. } => every(Duration::from_millis(10)).map(|_| Message::Recv),
+            RecvState::Listening => every(Duration::from_millis(10)).map(|_| Message::Recv),
         }
     }
     // App UI
@@ -289,13 +289,13 @@ impl SerialApp {
         let tx_type = text("Command type:");
         let tx_utf8 = radio(
             "UTF-8",
-            RadioChoice::UTF8,
+            RadioChoice::Utf8,
             self.radio_choice,
             Message::SelectRadio,
         );
         let tx_hex = radio(
             "HEX",
-            RadioChoice::HEX,
+            RadioChoice::Hex,
             self.radio_choice,
             Message::SelectRadio,
         );
@@ -324,7 +324,7 @@ impl SerialApp {
                     .padding(10)
                     .style(button::success)
                     .on_press(Message::ToggleListener),
-                RecvState::Listening { .. } => button("Stop Listener")
+                RecvState::Listening => button("Stop Listener")
                     .padding(10)
                     .style(button::danger)
                     .on_press(Message::ToggleListener),
@@ -367,6 +367,9 @@ impl SerialApp {
     }
     // Initial Theme
     fn theme(&self) -> Theme {
-        self.selected_theme.as_ref().unwrap_or(&Theme::Dark).clone()
+        self.selected_theme
+            .as_ref()
+            .unwrap_or(&Theme::CatppuccinMacchiato)
+            .clone()
     }
 }
