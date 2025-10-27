@@ -15,7 +15,7 @@ const VERSION: &str = "v0.7";
 fn main() -> iced::Result {
     let icon_232 = include_bytes!("icon.png").to_vec(); // TESTING
     // Initial Window Settings
-    let settings = iced::window::Settings {
+    let settings = window::Settings {
         size: Size::new(500.0, 500.0),
         min_size: Some(Size::new(500.0, 500.0)),
         icon: window::icon::from_rgba(icon_232, 24, 24).ok(), // TESTING
@@ -112,7 +112,6 @@ impl SerialApp {
         let parity = vec![Parity::None, Parity::Odd, Parity::Even];
         let stop_bits = vec![StopBits::One, StopBits::Two];
         let themes = Theme::ALL.to_vec();
-        //themes.remove(0); // removed Light theme from selection
         Self {
             port_list: combo_box::State::new(ports),
             baud_rate_list: combo_box::State::new(baud_rates),
@@ -194,7 +193,7 @@ impl SerialApp {
                     let cmd = &self.command;
                     if self.radio_choice == Some(RadioChoice::Hex) {
                         let hex_string = cmd.replace(" ", "");
-                        if hex_string.len() % 2 != 0 {
+                        if !hex_string.len().is_multiple_of(2) {
                             self.log_messages.push("Invalid hex string".to_string());
                             return;
                         }
@@ -330,7 +329,6 @@ impl SerialApp {
             Message::SelectStopBits,
         )
         .padding(10);
-
         let theme_list = combo_box(
             &self.theme_list,
             "Change theme...",
@@ -340,12 +338,10 @@ impl SerialApp {
         .on_option_hovered(Message::HoverTheme)
         .padding(10)
         .width(200);
-
         let command = text_input("Enter command...", &self.command)
             .on_input(Message::ChangeCmd)
             .on_submit(Message::Send)
             .padding(10);
-
         let tx_type = text("Command type:");
         let tx_utf8 = radio(
             "UTF-8",
@@ -359,7 +355,6 @@ impl SerialApp {
             self.radio_choice,
             Message::SelectRadio,
         );
-
         let rx_type = text("Receive as:");
         let rx_utf8 = checkbox("UTF-8", self.rx_utf8_checked).on_toggle(Message::CheckBoxUTF8);
         let rx_hex = checkbox("HEX", self.rx_hex_checked).on_toggle(Message::CheckBoxHEX);
