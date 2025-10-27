@@ -139,12 +139,16 @@ impl SerialApp {
     // App Logic
     fn update(&mut self, message: Message) {
         match message {
-            Message::ChangeCmd(cmd) => self.command = cmd,
             Message::SelectPort(port) => self.selected_port = Some(port),
             Message::SelectBaudRate(baud_rate) => self.selected_baud_rate = Some(baud_rate),
             Message::SelectDataBits(data_bits) => self.selected_data_bits = Some(data_bits),
             Message::SelectParity(parity) => self.selected_parity = Some(parity),
             Message::SelectStopBits(stop_bits) => self.selected_stop_bits = Some(stop_bits),
+            Message::SelectRadio(choice) => self.radio_choice = Some(choice),
+            Message::CheckBoxUTF8(clicked) => self.rx_utf8_checked = clicked,
+            Message::CheckBoxHEX(clicked) => self.rx_hex_checked = clicked,
+            Message::CheckBoxBIN(clicked) => self.rx_binary_checked = clicked,
+            Message::ChangeCmd(cmd) => self.command = cmd,
             Message::SelectTheme(theme) => self.selected_theme = Some(theme),
             Message::HoverTheme(theme) => self.selected_theme = Some(theme),
             Message::OpenPort => {
@@ -278,18 +282,6 @@ impl SerialApp {
                 } else {
                     self.log_messages.push("Port not open".to_string());
                 }
-            }
-            Message::SelectRadio(choice) => {
-                self.radio_choice = Some(choice);
-            }
-            Message::CheckBoxUTF8(clicked) => {
-                self.rx_utf8_checked = clicked;
-            }
-            Message::CheckBoxHEX(clicked) => {
-                self.rx_hex_checked = clicked;
-            }
-            Message::CheckBoxBIN(clicked) => {
-                self.rx_binary_checked = clicked;
             }
         }
     }
