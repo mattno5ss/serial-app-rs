@@ -6,16 +6,19 @@ use iced::time::{Duration, every};
 use iced::widget::{
     button, checkbox, column, combo_box, container, radio, row, scrollable, text, text_input,
 };
-use iced::{Border, Element, Fill, Size, Subscription, Theme};
+use iced::{Border, Element, Fill, Size, Subscription, Theme, window};
+use serialport::{DataBits, Parity, StopBits};
 use std::io::Write;
 
-const VERSION: &str = "v0.6";
+const VERSION: &str = "v0.7";
 
 fn main() -> iced::Result {
+    let icon_232 = include_bytes!("icon.png").to_vec(); // TESTING
     // Initial Window Settings
     let settings = iced::window::Settings {
         size: Size::new(500.0, 500.0),
         min_size: Some(Size::new(500.0, 500.0)),
+        icon: window::icon::from_rgba(icon_232, 24, 24).ok(), // TESTING
         ..Default::default()
     };
     // Run App
@@ -28,7 +31,15 @@ fn main() -> iced::Result {
 // App State
 struct SerialApp {
     port_list: combo_box::State<String>,
+    baud_rate_list: combo_box::State<u32>,
+    data_bits_list: combo_box::State<DataBits>,
+    parity_list: combo_box::State<Parity>,
+    stop_bits_list: combo_box::State<StopBits>,
     selected_port: Option<String>,
+    selected_baud_rate: Option<u32>,
+    selected_data_bits: Option<DataBits>,
+    selected_parity: Option<Parity>,
+    selected_stop_bits: Option<StopBits>,
     theme_list: combo_box::State<Theme>,
     selected_theme: Option<Theme>,
     port: Option<Box<dyn serialport::SerialPort>>,
@@ -62,6 +73,10 @@ enum RecvState {
 enum Message {
     ChangeCmd(String),
     SelectPort(String),
+    SelectBaudRate(u32),
+    SelectDataBits(DataBits),
+    SelectParity(Parity),
+    SelectStopBits(StopBits),
     SelectTheme(Theme),
     HoverTheme(Theme),
     OpenPort,
@@ -87,11 +102,28 @@ impl SerialApp {
             .iter()
             .map(|port| port.port_name.clone())
             .collect::<Vec<_>>();
-        let mut themes = Theme::ALL.to_vec();
-        themes.remove(0); // removed Light theme from selection
+        let baud_rates = vec![9600, 19200, 38400, 57600, 115200];
+        let data_bits = vec![
+            DataBits::Five,
+            DataBits::Six,
+            DataBits::Seven,
+            DataBits::Eight,
+        ];
+        let parity = vec![Parity::None, Parity::Odd, Parity::Even];
+        let stop_bits = vec![StopBits::One, StopBits::Two];
+        let themes = Theme::ALL.to_vec();
+        //themes.remove(0); // removed Light theme from selection
         Self {
             port_list: combo_box::State::new(ports),
+            baud_rate_list: combo_box::State::new(baud_rates),
+            data_bits_list: combo_box::State::new(data_bits),
+            parity_list: combo_box::State::new(parity),
+            stop_bits_list: combo_box::State::new(stop_bits),
             selected_port: None,
+            selected_baud_rate: Some(9600),
+            selected_data_bits: Some(DataBits::Eight),
+            selected_parity: Some(Parity::None),
+            selected_stop_bits: Some(StopBits::One),
             theme_list: combo_box::State::new(themes),
             selected_theme: None,
             port: None,
@@ -109,18 +141,26 @@ impl SerialApp {
         match message {
             Message::ChangeCmd(cmd) => self.command = cmd,
             Message::SelectPort(port) => self.selected_port = Some(port),
+            Message::SelectBaudRate(baud_rate) => self.selected_baud_rate = Some(baud_rate),
+            Message::SelectDataBits(data_bits) => self.selected_data_bits = Some(data_bits),
+            Message::SelectParity(parity) => self.selected_parity = Some(parity),
+            Message::SelectStopBits(stop_bits) => self.selected_stop_bits = Some(stop_bits),
             Message::SelectTheme(theme) => self.selected_theme = Some(theme),
-            Message::HoverTheme(theme) => {
-                self.selected_theme = Some(theme);
-            }
+            Message::HoverTheme(theme) => self.selected_theme = Some(theme),
             Message::OpenPort => {
                 if self.selected_port.is_none() {
                     self.log_messages.push("No port selected".to_string());
                     return;
                 }
-                self.port = match serialport::new(self.selected_port.as_deref().unwrap(), 9600)
-                    .timeout(Duration::from_millis(10))
-                    .open()
+                self.port = match serialport::new(
+                    self.selected_port.as_deref().unwrap(),
+                    self.selected_baud_rate.unwrap(),
+                )
+                .data_bits(self.selected_data_bits.unwrap())
+                .parity(self.selected_parity.unwrap())
+                .stop_bits(self.selected_stop_bits.unwrap())
+                .timeout(Duration::from_millis(10))
+                .open()
                 {
                     Ok(port) => {
                         self.log_messages.push(format!(
@@ -261,13 +301,41 @@ impl SerialApp {
         }
     }
     // App UI
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         // Inputs
         let port_list = combo_box(
             &self.port_list,
             "Select a port...",
             self.selected_port.as_ref(),
             Message::SelectPort,
+        )
+        .padding(10);
+        let baud_rate = combo_box(
+            &self.baud_rate_list,
+            "Baud rate",
+            self.selected_baud_rate.as_ref(),
+            Message::SelectBaudRate,
+        )
+        .padding(10);
+        let parity = combo_box(
+            &self.parity_list,
+            "Parity",
+            self.selected_parity.as_ref(),
+            Message::SelectParity,
+        )
+        .padding(10);
+        let data_bits = combo_box(
+            &self.data_bits_list,
+            "Data bits",
+            self.selected_data_bits.as_ref(),
+            Message::SelectDataBits,
+        )
+        .padding(10);
+        let stop_bits = combo_box(
+            &self.stop_bits_list,
+            "Stop bits",
+            self.selected_stop_bits.as_ref(),
+            Message::SelectStopBits,
         )
         .padding(10);
 
@@ -354,6 +422,7 @@ impl SerialApp {
         container(
             column![
                 row![port_list, port_toggle, recv_toggle].spacing(20),
+                row![baud_rate, data_bits, parity, stop_bits].spacing(20),
                 row![rx_type, rx_hex, rx_bin, rx_utf8].spacing(20),
                 row![log],
                 row![tx_type, tx_utf8, tx_hex].spacing(20),
@@ -369,7 +438,7 @@ impl SerialApp {
     fn theme(&self) -> Theme {
         self.selected_theme
             .as_ref()
-            .unwrap_or(&Theme::CatppuccinMacchiato)
+            .unwrap_or(&Theme::CatppuccinFrappe)
             .clone()
     }
 }
