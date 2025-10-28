@@ -222,7 +222,9 @@ impl SerialApp {
                             }
                         }
                     }
-                    self.log_messages.push("Sent: ".to_string() + cmd);
+                    let bytes_sent = cmd.clone().into_bytes().len();
+                    self.log_messages
+                        .push(format!("Sent {} bytes: {}", bytes_sent, cmd));
                 }
                 None => {
                     self.log_messages.push("Port not open".to_string());
@@ -249,11 +251,13 @@ impl SerialApp {
                                         .map(|byte| format!("{byte:08b}"))
                                         .collect::<Vec<String>>()
                                         .join(" ");
-                                    self.log_messages.push(format!("Received: {binary_string}"));
+                                    self.log_messages
+                                        .push(format!("Received {b} bytes: {binary_string}"));
                                 }
                                 if self.rx_utf8_checked {
                                     let utf8_string = String::from_utf8(buffer).unwrap();
-                                    self.log_messages.push(format!("Received: {utf8_string}"));
+                                    self.log_messages
+                                        .push(format!("Received {b} bytes: {utf8_string}"));
                                 }
                             }
                             Err(e) => {
