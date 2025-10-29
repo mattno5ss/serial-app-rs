@@ -1,6 +1,9 @@
 // On Arch Linux (EndeavourOS), you must add your user to the "uucp" group with
 // "sudo usermod -aG uucp <username>" to access serial ports
 
+// Prevent terminal from running in the background on Windows
+#![windows_subsystem = "windows"]
+
 use iced::border::Radius;
 use iced::time::{Duration, every};
 use iced::widget::{
@@ -13,12 +16,13 @@ use std::io::Write;
 const VERSION: &str = "v0.7";
 
 fn main() -> iced::Result {
-    let icon_232 = include_bytes!("icon.png").to_vec(); // TESTING
+    let rs232_icon = window::icon::from_rgba(include_bytes!("icon.png").to_vec(), 24, 24).ok(); // TESTING
+
     // Initial Window Settings
     let settings = window::Settings {
         size: Size::new(500.0, 500.0),
         min_size: Some(Size::new(500.0, 500.0)),
-        icon: window::icon::from_rgba(icon_232, 24, 24).ok(), // TESTING
+        icon: rs232_icon, // TESTING
         ..Default::default()
     };
     // Run App
