@@ -124,7 +124,7 @@ impl SerialApp {
             selected_parity: Some(Parity::None),
             selected_stop_bits: Some(StopBits::One),
             theme_list: combo_box::State::new(themes),
-            selected_theme: None,
+            selected_theme: Some(Theme::CatppuccinFrappe),
             port: None,
             command: String::new(),
             log_messages: Vec::new(),
@@ -427,9 +427,6 @@ impl SerialApp {
     }
     // Initial Theme
     fn theme(&self) -> Theme {
-        self.selected_theme
-            .as_ref()
-            .unwrap_or(&Theme::CatppuccinFrappe)
-            .clone()
+        self.selected_theme.as_ref().unwrap().clone()
     }
 }
